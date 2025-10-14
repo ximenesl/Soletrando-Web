@@ -1,37 +1,22 @@
-.landing-container {
+.start-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    text-align: center;
-    padding: 2rem;
 }
 
-.landing-title {
+.start-title {
     font-size: 3rem;
     color: #ffffff;
-    margin-bottom: 1rem;
-}
-
-.landing-subtitle {
-    font-size: 1.5rem;
-    color: #e0e0e0;
     margin-bottom: 2rem;
 }
 
-.project-description {
-    max-width: 600px;
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
-    color: #c0c0c0;
-}
-
-.start-button {
+.start-game-button {
     padding: 1rem 2rem;
     font-size: 1.2rem;
     color: #fff;
-    background-color: #007bff;
+    background-color: #28a745;
     border: none;
     border-radius: 5px;
     text-decoration: none;
@@ -39,6 +24,6 @@
     transition: background-color 0.3s;
 }
 
-.start-button:hover {
-    background-color: #0056b3;
+.start-game-button:hover {
+    background-color: #218838;
 }
