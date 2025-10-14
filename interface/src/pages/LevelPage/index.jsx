@@ -41,7 +41,8 @@ export default function LevelPage() {
                     <label htmlFor="mic-source">Fonte do Microfone:</label>
                     <select id="mic-source" value={micSource} onChange={(e) => setMicSource(e.target.value)}>
                         <option value="pc">PC</option>
-                        <option value="nao" disabled={!isConnected}>NAO</option>
+                        <option value="nao">NAO</option>
+                        <option value="hibrido">Híbrido</option>
                     </select>
                 </div>
             </div>

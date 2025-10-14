@@ -22,7 +22,7 @@ export default function NaoConnection() {
             placeholder="Digite o IP do robô" 
             className="nao-ip-input"
           />
-          <button onClick={handleConnect} className="connect-button">
+          <button onClick={handleConnect} className="nao-button connect-button">
             Conectar
           </button>
         </div>
