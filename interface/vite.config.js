@@ -32,5 +32,16 @@ export default defineConfig({
       suppressWarnings: true,
       type: 'module',
     },
-  })],
+    server: {
+      host: true,
+      proxy: {
+        '/soletrando': {
+          target: 'https://cathern-subhirsute-avelina.ngrok-free.dev',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/soletrando/, ''), // Mantenha a rota da API
+        },
+      },
+    },
+  }),
+],
 })

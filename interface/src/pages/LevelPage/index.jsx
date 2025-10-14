@@ -11,7 +11,7 @@ export default function LevelPage() {
     const { isConnected, naoIp } = useNao();
 
     const handleStartGame = async () => {
-        const API_URL = isConnected ? `http://${naoIp}:8000` : 'http://localhost:8000';
+        const API_URL = import.meta.env.VITE_BACKEND_URL;
         try {
             await axios.post(`${API_URL}/game/level`, null, { params: { level: `${level}_ano` } });
             await axios.post(`${API_URL}/game/mic-source`, null, { params: { source: micSource } });

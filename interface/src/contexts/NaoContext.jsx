@@ -9,6 +9,8 @@ export function NaoProvider({ children }) {
   const [naoIp, setNaoIp] = useState('');
   const [isConnected, setIsConnected] = useState(false);
 
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
   const connectToNao = async (ip) => {
     if (!ip) {
       toast.error('Por favor, insira o endereço de IP do robô.');
@@ -17,7 +19,7 @@ export function NaoProvider({ children }) {
     try {
       // We assume a successful connection if this request succeeds.
       // This endpoint should exist on the Python backend.
-      await axios.post(`http://${ip}:5000/api/connect`, { ip_address: ip });
+      await axios.post(`${backendUrl}/nao/connect?ip=${ip}`);
       setNaoIp(ip);
       setIsConnected(true);
       toast.success('Conectado ao robô NAO com sucesso!');

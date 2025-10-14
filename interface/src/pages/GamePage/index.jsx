@@ -11,11 +11,12 @@ export default function GamePage() {
     const ws = useRef(null);
     const { naoIp, isConnected } = useNao();
 
-    const API_URL = isConnected ? `http://${naoIp}:8000` : 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_BACKEND_URL;
 
     const fetchGameState = async () => {
         try {
             const response = await axios.get(`${API_URL}/game/state`);
+            console.log(response);
             setGameState(response.data);
             if (response.data.fim_de_jogo) {
                 navigate('/end');
@@ -28,7 +29,7 @@ export default function GamePage() {
     useEffect(() => {
         fetchGameState();
 
-        const wsUrl = isConnected ? `ws://${naoIp}:8000/ws/game` : 'ws://localhost:8000/ws/game';
+        const wsUrl = import.meta.env.VITE_BACKEND_URL;
         ws.current = new WebSocket(wsUrl);
         ws.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
