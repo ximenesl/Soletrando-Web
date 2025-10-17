@@ -29,7 +29,7 @@ export default function GamePage() {
     useEffect(() => {
         fetchGameState();
 
-        const wsUrl = import.meta.env.VITE_BACKEND_URL;
+        const wsUrl = import.meta.env.VITE_BACKEND_URL.replace('http', 'ws') + '/ws/game';
         ws.current = new WebSocket(wsUrl);
         ws.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -44,7 +44,7 @@ export default function GamePage() {
                 ws.current.close();
             }
         };
-    }, [isConnected, naoIp, navigate]);
+    }, [navigate]);
 
     const handleSpell = async () => {
         try {

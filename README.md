@@ -31,7 +31,7 @@ Para executar o projeto, você precisará ter o Node.js e o Python instalados em
     python api.py
     ```
 
-O servidor backend estará em execução em `http://localhost:8000`.
+O servidor backend estará em execução em `http://localhost:8001`.
 
 ### Frontend
 

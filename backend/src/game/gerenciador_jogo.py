@@ -1,7 +1,9 @@
 """Módulo do Gerenciador do Jogo, o cérebro do back-end."""
 
 import threading
-from naoqi import ALBroker
+import qi
+import queue
+
 from game.gerenciador_palavras import GerenciadorPalavras
 from services.conexao_nao import ConexaoNAO, ReconhecimentoVozNAO, NOME_MODULO_AUDIO
 from services.comandos_nao import ComandosNAO
@@ -22,7 +24,6 @@ class GerenciadorJogo:
         self.conexao_nao = ConexaoNAO()
         self.comandos_nao: ComandosNAO | None = None
         self.reconhecimento_nao: ReconhecimentoVozNAO | None = None
-        self.broker_nao: ALBroker | None = None
 
         # --- Estado do Jogo ---
         self.palavra_atual = ""
@@ -30,12 +31,17 @@ class GerenciadorJogo:
         self.nivel_atual = "1"
         self.fonte_microfone = "pc"
         self.escutando = False
-        self.thread_escuta = None  # Não é mais usado para NAO ou Hibrido
+        self.thread_escuta = None
         self.jogo_iniciado = False
         self.erro = None
+        self.acertos = 0
+        self.erros = 0
+        self.queue = queue.Queue()
 
     def iniciar_jogo(self):
         """Carrega as palavras do nível selecionado e inicia a primeira rodada."""
+        self.acertos = 0
+        self.erros = 0
         if self.gerenciador_palavras.carregar_palavras(self.nivel_atual):
             self.jogo_iniciado = True
             return self.iniciar_nova_rodada()
@@ -129,6 +135,7 @@ class GerenciadorJogo:
     def _atualizar_soletracao(self, soletracao: str):
         """Callback para atualizar a soletração."""
         self.soletracao_usuario = soletracao
+        self.queue.put(soletracao)
 
     def _finalizar_escuta(self):
         """Callback para quando a escuta termina."""
@@ -144,10 +151,12 @@ class GerenciadorJogo:
         acertou = soletracao_normalizada == palavra_normalizada
 
         if acertou:
+            self.acertos += 1
             resultado_texto = "Parabéns, você acertou!"
             if self.comandos_nao:
                 self.comandos_nao.piscar_olhos("green")
         else:
+            self.erros += 1
             resultado_texto = f"Você errou! A palavra era '{self.palavra_atual.upper()}'"
             if self.comandos_nao:
                 self.comandos_nao.piscar_olhos("red")
@@ -191,14 +200,12 @@ class GerenciadorJogo:
         """Conecta ao NAO, inicializa o broker e o módulo de reconhecimento remoto."""
         if self.conexao_nao.conectar(ip, port):
             try:
-                self.broker_nao = ALBroker("pythonBroker", "0.0.0.0", 0, ip, port)
                 self.reconhecimento_nao = ReconhecimentoVozNAO(
-                    NOME_MODULO_AUDIO, 
-                    self._atualizar_soletracao, 
-                    self._finalizar_escuta,
-                    ip,
-                    port
+                    self.conexao_nao.application,
+                    self._atualizar_soletracao,
+                    self._finalizar_escuta
                 )
+                self.conexao_nao.session.registerService(NOME_MODULO_AUDIO, self.reconhecimento_nao)
                 self.comandos_nao = ComandosNAO(self.conexao_nao)
                 self.comandos_nao.dizer("Olá! Estou pronto para soletrar.")
                 return {"status": "conectado", "ip": ip}
@@ -219,10 +226,6 @@ class GerenciadorJogo:
         self.conexao_nao.desconectar()
         self.comandos_nao = None
         self.reconhecimento_nao = None
-
-        if self.broker_nao:
-            self.broker_nao.shutdown()
-            self.broker_nao = None
 
         if self.fonte_microfone in ('nao', 'hibrido'): 
             self.definir_fonte_microfone('pc')
@@ -248,8 +251,11 @@ class GerenciadorJogo:
 
             "erro": self.erro,
 
-            "nao_conectado": self.comandos_nao is not None
+            "nao_conectado": self.comandos_nao is not None,
+
+            "pontuacao": {
+                "acertos": self.acertos,
+                "erros": self.erros
+            }
 
         }
-
-

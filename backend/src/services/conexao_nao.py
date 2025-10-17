@@ -1,8 +1,9 @@
 """Módulo para reconhecimento de voz remoto usando o NAO a."""
+import qi
 import sys
 import time
 import speech_recognition as sr
-from naoqi import ALProxy, ALBroker, ALModule
+import numpy as np
 
 # Importa as mesmas dependências do seu reconhecedor local
 from thefuzz import process
@@ -16,6 +17,7 @@ NOME_MODULO_AUDIO = "ReconhecedorRemoto"
 class ConexaoNAO:
     """Gerencia a conexão com o robô NAO."""
     def __init__(self):
+        self.application = None
         self.session = None
         self.ip = None
         self.port = None
@@ -25,18 +27,24 @@ class ConexaoNAO:
         if self.session:
             return True
         try:
-            self.session = ALProxy("ALSession", ip, port)
+            connection_url = f"tcp://{ip}:{port}"
+            self.application = qi.Application([NOME_MODULO_AUDIO, "--qi-url=" + connection_url])
+            self.application.start()
+            self.session = self.application.session
             self.ip = ip
             self.port = port
             return True
         except Exception as e:
             print(f"Falha ao conectar ao NAO: {e}")
+            self.application = None
             self.session = None
             return False
 
     def desconectar(self):
         """Desconecta-se do NAO."""
-        if self.session:
+        if self.application:
+            self.application.stop()
+            self.application = None
             self.session = None
 
     def obter_servico(self, nome_servico: str):
@@ -49,16 +57,19 @@ class ConexaoNAO:
             print(f"Falha ao obter o serviço '{nome_servico}': {e}")
             return None
 
-class ReconhecimentoVozNAO(ALModule):
+class ReconhecimentoVozNAO(object):
     """
     Módulo remoto que se inscreve no ALAudioDevice do NAO para receber o stream 
     de áudio e processá-lo no PC.
     """
-    def __init__(self, nome, callback_letra, callback_final, ip, port):
-        super(ReconhecimentoVozNAO, self).__init__(nome)
+    def __init__(self, app, callback_letra, callback_final):
+        super(ReconhecimentoVozNAO, self).__init__()
+        app.start()
+        session = app.session
+        self.audio_service = session.service("ALAudioDevice")
+        self.isProcessingDone = False
         self.reconhecedor = sr.Recognizer()
         self.reconhecedor.pause_threshold = 1.5
-        self.audio_proxy = ALProxy("ALAudioDevice", ip, port)
         
         self.escutando = False
         self.soletracao_atual = ""
@@ -68,11 +79,10 @@ class ReconhecimentoVozNAO(ALModule):
         self.callback_final = callback_final
 
         # Configurações do áudio do NAO
-        # 4 canais (microfones), 16000 Hz, formato interleaved
         self.taxa_amostragem = 16000
         self.canais = 4
-        # Largura da amostra em bytes (16 bits = 2 bytes)
         self.largura_amostra = 2
+        self.module_name = NOME_MODULO_AUDIO
 
     def iniciar_escuta(self, soletracao_inicial: str):
         """Inicia o processo de escuta e reconhecimento."""
@@ -82,9 +92,8 @@ class ReconhecimentoVozNAO(ALModule):
         print("Iniciando escuta remota no NAO...")
         self.soletracao_atual = soletracao_inicial
         self.escutando = True
-        # (nome do módulo, taxa de amostragem, canais, 0=interleaved)
-        self.audio_proxy.setClientPreferences(self.getName(), self.taxa_amostragem, self.canais, 0)
-        self.audio_proxy.subscribe(self.getName())
+        self.audio_service.setClientPreferences(self.module_name, self.taxa_amostragem, self.canais, 0)
+        self.audio_service.subscribe(self.module_name)
 
     def parar_escuta(self):
         """Para o processo de escuta."""
@@ -93,7 +102,7 @@ class ReconhecimentoVozNAO(ALModule):
 
         print("Parando escuta remota...")
         self.escutando = False
-        self.audio_proxy.unsubscribe(self.getName())
+        self.audio_service.unsubscribe(self.module_name)
         if self.callback_final:
             self.callback_final()
 
@@ -106,18 +115,15 @@ class ReconhecimentoVozNAO(ALModule):
             return
 
         try:
-            # Cria um objeto AudioData com os bytes recebidos do NAO
             audio_data = sr.AudioData(
                 frame_data=inputBuffer,
                 sample_rate=self.taxa_amostragem,
                 sample_width=self.largura_amostra
             )
 
-            # Tenta reconhecer o que foi dito usando o Google Speech API
             texto = self.reconhecedor.recognize_google(audio_data, language='pt-BR').lower()
             print(f"Texto bruto reconhecido: '{texto}'")
 
-            # Usa a lógica de correspondência fuzzy que você já tinha
             melhor_correspondencia, pontuacao = process.extractOne(texto, VOCABULARIO_LETRAS)
             
             if pontuacao >= 75:
@@ -128,8 +134,6 @@ class ReconhecimentoVozNAO(ALModule):
                     self.callback_letra(self.soletracao_atual)
 
         except (sr.UnknownValueError, sr.RequestError) as e:
-            # Ignora erros se o som for ininteligível ou houver problema na API
-            # print(f"Não foi possível reconhecer o áudio: {e}")
             pass
         except Exception as e:
             print(f"Ocorreu um erro inesperado no processamento de áudio: {e}")

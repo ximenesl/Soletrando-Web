@@ -2,6 +2,7 @@
 import speech_recognition as sr
 import json
 import sys
+import asyncio
 from thefuzz import process
 from config.settings import ARQUIVO_MAPA_LETRAS
 
@@ -33,30 +34,46 @@ class ReconhecimentoVozPC:
 
     def ouvir_soletracao(self, soletracao_inicial: str, callback_letra: callable, callback_final: callable):
         """Inicia o reconhecimento contínuo de letras a partir de um estado inicial."""
+        asyncio.set_event_loop(asyncio.new_event_loop())
         self.escutando = True
         soletracao_atual = soletracao_inicial
 
+        print("Microfones disponíveis:")
+        for index, name in enumerate(sr.Microphone.list_microphone_names()):
+            print(f'  - [{index}] {name}')
+
         try:
             with sr.Microphone(device_index=self.device_index) as source:
+                print(f"Usando microfone: {sr.Microphone.list_microphone_names()[self.device_index or 0]}")
                 self.reconhecedor.adjust_for_ambient_noise(source, duration=0.5)
 
                 while self.escutando:
                     try:
-                        audio = self.reconhecedor.listen(source, timeout=2, phrase_time_limit=2)
+                        print("Ouvindo...")
+                        audio = self.reconhecedor.listen(source, timeout=5, phrase_time_limit=3)
+                        print("Processando áudio...")
                         texto = self.reconhecedor.recognize_google(audio, language='pt-BR').lower()
+                        print(f"Texto bruto reconhecido: '{texto}'")
 
                         melhor_correspondecia, pontuacao = process.extractOne(texto, VOCABULARIO_LETRAS)
+                        print(f"Melhor correspondência: '{melhor_correspondecia}' com pontuação {pontuacao}")
                         
                         if pontuacao >= 75:
                             letra = MAPA_LETRAS_REVERSO[melhor_correspondecia]
                             soletracao_atual += letra
+                            print(f"Letra adicionada: {letra}. Soletracao atual: '{soletracao_atual}'")
                             callback_letra(soletracao_atual) 
 
-                    except (sr.WaitTimeoutError, sr.UnknownValueError, sr.RequestError):
+                    except sr.WaitTimeoutError:
+                        print("Nenhuma fala detectada.")
                         continue
-        except Exception:
-            pass
+                    except (sr.UnknownValueError, sr.RequestError) as e:
+                        print(f"Erro no reconhecimento: {e}")
+                        continue
+        except Exception as e:
+            print(f"Erro inesperado no reconhecimento de voz: {e}")
         finally:
+            print("Finalizando o reconhecimento de voz.")
             self.escutando = False
             callback_final()
 

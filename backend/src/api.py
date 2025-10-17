@@ -1,5 +1,7 @@
-
 """Arquivo principal da API do Soletrando."""
+import asyncio
+import json
+import queue
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,11 +18,27 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Em produção, restrinja para o domínio do front-end
     allow_credentials=True,
-    allow_methods=["*"]
-,
-    allow_headers=["*"]
-,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+# --- Gerenciador de Conexões WebSocket ---
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
 
 # --- Singleton do Gerenciador do Jogo ---
 game_manager = GerenciadorJogo()
@@ -28,24 +46,35 @@ game_manager = GerenciadorJogo()
 # --- WebSocket para atualizações em tempo real ---
 @app.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    await manager.connect(websocket)
     try:
         while True:
-            # Apenas para manter a conexão viva, o back-end envia o estado
+            # Apenas para manter a conexão viva
             await websocket.receive_text()
     except WebSocketDisconnect:
+        manager.disconnect(websocket)
         print("Cliente WebSocket desconectado")
 
 async def broadcast_state():
-    # Esta função será chamada para enviar o estado atual para todos os clientes
-    # (Implementação de broadcast necessária)
-    pass
+    """Esta função será chamada para enviar o estado atual para todos os clientes"""
+    state = game_manager.obter_estado()
+    await manager.broadcast(json.dumps(state))
 
-# Sobrescrever o método de atualização do gerenciador para usar o broadcast
-game_manager._atualizar_soletracao = lambda soletracao: (
-    setattr(game_manager, 'soletracao_usuario', soletracao),
-    # asyncio.create_task(broadcast_state()) # Descomente quando o broadcast for implementado
-)
+async def process_queue():
+    while True:
+        try:
+            # Usamos to_thread para não bloquear o event loop
+            soletracao = await asyncio.to_thread(game_manager.queue.get)
+            await broadcast_state()
+            game_manager.queue.task_done()
+        except queue.Empty:
+            await asyncio.sleep(0.1)
+
+@app.on_event("startup")
+async def startup_event():
+    # Inicia a tarefa de processamento da fila em segundo plano
+    asyncio.create_task(process_queue())
+
 
 # --- Endpoints da API ---
 
@@ -98,4 +127,4 @@ async def disconnect_nao():
 # --- Para executar a API localmente ---
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
