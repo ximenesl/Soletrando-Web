@@ -22,10 +22,10 @@ class ConexaoNAO:
         self.ip = None
         self.port = None
 
-    def conectar(self, ip: str, port: int = 9559) -> bool:
+    def conectar(self, ip: str, port: int = 9559) -> tuple[bool, str]:
         """Conecta-se ao NAO."""
         if self.session:
-            return True
+            return True, "Já conectado"
         try:
             connection_url = f"tcp://{ip}:{port}"
             self.application = qi.Application([NOME_MODULO_AUDIO, "--qi-url=" + connection_url])
@@ -33,12 +33,12 @@ class ConexaoNAO:
             self.session = self.application.session
             self.ip = ip
             self.port = port
-            return True
+            return True, "Conectado com sucesso"
         except Exception as e:
             print(f"Falha ao conectar ao NAO: {e}")
             self.application = None
             self.session = None
-            return False
+            return False, str(e)
 
     def desconectar(self):
         """Desconecta-se do NAO."""

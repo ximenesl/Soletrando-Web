@@ -197,7 +197,8 @@ class GerenciadorJogo:
 
     def conectar_nao(self, ip: str, port: int = 9559):
         """Conecta ao NAO, inicializa o broker e o módulo de reconhecimento remoto."""
-        if self.conexao_nao.conectar(ip, port):
+        sucesso, mensagem = self.conexao_nao.conectar(ip, port)
+        if sucesso:
             try:
                 self.reconhecimento_nao = ReconhecimentoVozNAO(
                     self.conexao_nao.application,
@@ -212,7 +213,7 @@ class GerenciadorJogo:
                 self.desconectar_nao()
                 return {"status": "erro", "mensagem": f"Falha ao iniciar broker do NAO: {e}"}
         else:
-            return {"status": "erro", "mensagem": f"Falha ao conectar no IP {ip}"}
+            return {"status": "erro", "mensagem": f"Falha ao conectar: {mensagem}"}
 
 
 
