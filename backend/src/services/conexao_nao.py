@@ -72,7 +72,6 @@ class ReconhecimentoVozNAO(object):
         self.reconhecedor.pause_threshold = 1.5
         
         self.escutando = False
-        self.soletracao_atual = ""
         
         # Callbacks para interagir com a interface ou lógica do jogo
         self.callback_letra = callback_letra
@@ -84,13 +83,12 @@ class ReconhecimentoVozNAO(object):
         self.largura_amostra = 2
         self.module_name = NOME_MODULO_AUDIO
 
-    def iniciar_escuta(self, soletracao_inicial: str):
+    def iniciar_escuta(self):
         """Inicia o processo de escuta e reconhecimento."""
         if self.escutando:
             return
             
         print("Iniciando escuta remota no NAO...")
-        self.soletracao_atual = soletracao_inicial
         self.escutando = True
         self.audio_service.setClientPreferences(self.module_name, self.taxa_amostragem, self.canais, 0)
         self.audio_service.subscribe(self.module_name)
@@ -128,10 +126,9 @@ class ReconhecimentoVozNAO(object):
             
             if pontuacao >= 75:
                 letra = MAPA_LETRAS_REVERSO[melhor_correspondencia]
-                self.soletracao_atual += letra
-                print(f"Letra reconhecida: '{letra}' (Confiança: {pontuacao}%) -> Soletracao: '{self.soletracao_atual}'")
+                print(f"Letra reconhecida: '{letra}' (Confiança: {pontuacao}%)")
                 if self.callback_letra:
-                    self.callback_letra(self.soletracao_atual)
+                    self.callback_letra(letra)
 
         except (sr.UnknownValueError, sr.RequestError) as e:
             pass

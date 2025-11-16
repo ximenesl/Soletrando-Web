@@ -80,7 +80,7 @@ class GerenciadorJogo:
                 self.reconhecimento_pc = ReconhecimentoVozPC(device_index=device)
                 self.thread_escuta = threading.Thread(
                     target=self.reconhecimento_pc.ouvir_soletracao,
-                    args=(self.soletracao_usuario, self._atualizar_soletracao, self._finalizar_escuta),
+                    args=(self._adicionar_letra, self._finalizar_escuta),
                     daemon=True
                 )
                 self.thread_escuta.start()
@@ -88,15 +88,14 @@ class GerenciadorJogo:
             elif self.fonte_microfone == 'nao' and self.reconhecimento_nao:
                 if self.comandos_nao:
                     self.comandos_nao.dizer("Pode começar a soletrar.")
-                self.reconhecimento_nao.iniciar_escuta(self.soletracao_usuario)
+                self.reconhecimento_nao.iniciar_escuta()
 
             elif self.fonte_microfone == 'hibrido' and self.reconhecimento_nao:
                 if self.comandos_nao:
                     self.comandos_nao.dizer("Modo de cancelamento de ruído ativado.")
                 self.processador_audio = ProcessadorAudioMultiCanal(
                     reconhecimento_nao=self.reconhecimento_nao,
-                    soletracao_inicial=self.soletracao_usuario,
-                    callback_letra=self._atualizar_soletracao,
+                    callback_letra=self._adicionar_letra,
                     callback_final=self._finalizar_escuta,
                     device_index=device
                 )
@@ -132,10 +131,10 @@ class GerenciadorJogo:
         self._finalizar_escuta()
         return {"status": "parado"}
 
-    def _atualizar_soletracao(self, soletracao: str):
-        """Callback para atualizar a soletração."""
-        self.soletracao_usuario = soletracao
-        self.queue.put(soletracao)
+    def _adicionar_letra(self, letra: str):
+        """Callback para adicionar uma letra à soletração."""
+        self.soletracao_usuario += letra
+        self.queue.put(self.soletracao_usuario)
 
     def _finalizar_escuta(self):
         """Callback para quando a escuta termina."""
@@ -202,7 +201,7 @@ class GerenciadorJogo:
             try:
                 self.reconhecimento_nao = ReconhecimentoVozNAO(
                     self.conexao_nao.application,
-                    self._atualizar_soletracao,
+                    self._adicionar_letra,
                     self._finalizar_escuta
                 )
                 self.conexao_nao.session.registerService(NOME_MODULO_AUDIO, self.reconhecimento_nao)

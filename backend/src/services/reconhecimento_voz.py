@@ -32,11 +32,10 @@ class ReconhecimentoVozPC:
         self.escutando = False
         self.device_index = device_index
 
-    def ouvir_soletracao(self, soletracao_inicial: str, callback_letra: callable, callback_final: callable):
+    def ouvir_soletracao(self, callback_letra: callable, callback_final: callable):
         """Inicia o reconhecimento contínuo de letras a partir de um estado inicial."""
         asyncio.set_event_loop(asyncio.new_event_loop())
         self.escutando = True
-        soletracao_atual = soletracao_inicial
 
         print("Microfones disponíveis:")
         for index, name in enumerate(sr.Microphone.list_microphone_names()):
@@ -60,9 +59,8 @@ class ReconhecimentoVozPC:
                         
                         if pontuacao >= 75:
                             letra = MAPA_LETRAS_REVERSO[melhor_correspondecia]
-                            soletracao_atual += letra
-                            print(f"Letra adicionada: {letra}. Soletracao atual: '{soletracao_atual}'")
-                            callback_letra(soletracao_atual) 
+                            print(f"Letra reconhecida: {letra}")
+                            callback_letra(letra) 
 
                     except sr.WaitTimeoutError:
                         print("Nenhuma fala detectada.")

@@ -13,11 +13,10 @@ from services.reconhecimento_voz import MAPA_LETRAS_REVERSO, VOCABULARIO_LETRAS
 
 class ProcessadorAudioMultiCanal:
     """Gerencia a captura de múltiplas fontes de áudio e aplica filtros."""
-    def __init__(self, reconhecimento_nao: ReconhecimentoVozNAO, soletracao_inicial: str, callback_letra: callable, callback_final: callable, device_index: int | None = None):
+    def __init__(self, reconhecimento_nao: ReconhecimentoVozNAO, callback_letra: callable, callback_final: callable, device_index: int | None = None):
         self.reconhecimento_nao = reconhecimento_nao
         self.device_index = device_index
 
-        self.soletracao_atual = soletracao_inicial
         self.callback_letra = callback_letra
         self.callback_final = callback_final
 
@@ -69,7 +68,7 @@ class ProcessadorAudioMultiCanal:
         self.stream_pc.start()
 
         if self.reconhecimento_nao:
-            self.reconhecimento_nao.iniciar_escuta("")
+            self.reconhecimento_nao.iniciar_escuta()
 
         self.thread_processamento = threading.Thread(target=self._processar_filas, daemon=True)
         self.thread_processamento.start()
@@ -165,10 +164,9 @@ class ProcessadorAudioMultiCanal:
                 
                 if pontuacao >= 75:
                     letra = MAPA_LETRAS_REVERSO[melhor_correspondencia]
-                    self.soletracao_atual += letra
-                    print(f"Letra (híbrido): '{letra}' -> Soletracao: '{self.soletracao_atual}'")
+                    print(f"Letra (híbrido): '{letra}'")
                     if self.callback_letra:
-                        self.callback_letra(self.soletracao_atual)
+                        self.callback_letra(letra)
 
             except queue.Empty:
                 # Fila vazia, continua esperando
