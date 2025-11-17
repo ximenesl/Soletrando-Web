@@ -30,6 +30,7 @@ class GerenciadorJogo:
         self.soletracao_usuario = ""
         self.nivel_atual = "1"
         self.fonte_microfone = "pc"
+        self.saida_audio = "sistema"
         self.escutando = False
         self.thread_escuta = None
         self.jogo_iniciado = False
@@ -63,8 +64,8 @@ class GerenciadorJogo:
 
         self.palavra_atual = nova_palavra
 
-        if self.comandos_nao:
-            self.comandos_nao.dizer(f"A nova palavra é: {self.palavra_atual}")
+        if self.saida_audio == 'nao' and self.comandos_nao:
+            self.comandos_nao.dizer(f"A palavra é: {self.palavra_atual}")
 
         return {"palavra": self.palavra_atual}
 
@@ -195,6 +196,14 @@ class GerenciadorJogo:
         self.fonte_microfone = fonte_lower
         return {"status": "fonte de microfone definida", "fonte": self.fonte_microfone}
 
+    def definir_saida_audio(self, saida: str):
+        """Define a saída de áudio."""
+        saida_lower = saida.lower()
+        if saida_lower == 'nao' and not self.comandos_nao:
+            return {"status": "erro", "mensagem": "Conecte-se ao NAO para usar esta saída de áudio."}
+        self.saida_audio = saida_lower
+        return {"status": "saída de áudio definida", "saida": self.saida_audio}
+
     def conectar_nao(self, ip: str, port: int = 9559):
         """Conecta ao NAO, inicializa o broker e o módulo de reconhecimento remoto."""
         sucesso, mensagem = self.conexao_nao.conectar(ip, port)
@@ -244,6 +253,8 @@ class GerenciadorJogo:
             "nivel_atual": self.nivel_atual,
 
             "fonte_microfone": self.fonte_microfone,
+
+            "saida_audio": self.saida_audio,
 
             "escutando": self.escutando,
 

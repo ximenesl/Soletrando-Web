@@ -110,6 +110,10 @@ async def set_level(level: str):
 async def set_mic_source(source: str):
     return game_manager.definir_fonte_microfone(source)
 
+@app.post("/game/audio-output", tags=["Game"])
+async def set_audio_output(output: str):
+    return game_manager.definir_saida_audio(output)
+
 @app.get("/game/state", tags=["Game"])
 async def get_state():
     return game_manager.obter_estado()

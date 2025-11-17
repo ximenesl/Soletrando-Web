@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import './style.css';
+import { Container, Typography, Button } from '@mui/material';
 
 export default function StartPage() {
     const navigate = useNavigate();
@@ -9,9 +9,21 @@ export default function StartPage() {
     };
 
     return (
-        <div className="start-container">
-            <h1 className="start-title">Soletrando</h1>
-            <button onClick={handleStartGame} className="start-game-button">Iniciar Jogo</button>
-        </div>
+        <Container
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100vh',
+            }}
+        >
+            <Typography variant="h1" component="h1" gutterBottom>
+                Soletrando
+            </Typography>
+            <Button onClick={handleStartGame} variant="contained" color="primary" size="large">
+                Iniciar Jogo
+            </Button>
+        </Container>
     );
 }
