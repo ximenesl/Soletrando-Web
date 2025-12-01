@@ -11,12 +11,12 @@ export function LevelPage() {
   const [grade, setGrade] = useState<Grade>("1º Ano");
   const [microphoneSource, setMicrophoneSource] = useState<MicrophoneSource>("PC");
   const [audioOutput, setAudioOutput] = useState<AudioOutput>("Sistema");
-  const { setLevel, setMicSource, setAudioOutput, startGame } = useApi();
+  const { setLevel, setMicSource, setApiAudioOutput, startGame } = useApi();
 
   const handleStart = async () => {
     await setLevel(grade);
     await setMicSource(microphoneSource);
-    await setAudioOutput(audioOutput);
+    await setApiAudioOutput(audioOutput);
     await startGame();
   };
 

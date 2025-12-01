@@ -40,15 +40,29 @@ class GerenciadorJogo:
         self.queue = queue.Queue()
 
     def iniciar_jogo(self):
-        """Carrega as palavras do nível selecionado e inicia a primeira rodada."""
+        """
+        Carrega as palavras, aplica fallbacks para o NAO se necessário,
+        e inicia a primeira rodada.
+        """
+        # Fallback para configurações padrão se o NAO não estiver conectado
+        if not self.comandos_nao:
+            if self.fonte_microfone in ('nao', 'hibrido'):
+                self.fonte_microfone = 'pc'
+            if self.saida_audio == 'nao':
+                self.saida_audio = 'sistema'
+
         self.acertos = 0
         self.erros = 0
+        self.erro = None
+        self.soletracao_usuario = ""
+
         if self.gerenciador_palavras.carregar_palavras(self.nivel_atual):
             self.jogo_iniciado = True
             return self.iniciar_nova_rodada()
         else:
             self.erro = f"Não foi possível carregar palavras para o nível {self.nivel_atual}."
-            return {"erro": self.erro}
+            self.jogo_iniciado = False
+            return {"status": "erro", "mensagem": self.erro}
 
     def iniciar_nova_rodada(self):
         """Pede uma nova palavra e atualiza o estado."""
@@ -190,18 +204,12 @@ class GerenciadorJogo:
 
     def definir_fonte_microfone(self, fonte: str):
         """Define a fonte do microfone."""
-        fonte_lower = fonte.lower()
-        if fonte_lower in ('nao', 'hibrido') and not self.comandos_nao:
-            return {"status": "erro", "mensagem": "Conecte-se ao NAO para usar este microfone."}
-        self.fonte_microfone = fonte_lower
+        self.fonte_microfone = fonte.lower()
         return {"status": "fonte de microfone definida", "fonte": self.fonte_microfone}
 
     def definir_saida_audio(self, saida: str):
         """Define a saída de áudio."""
-        saida_lower = saida.lower()
-        if saida_lower == 'nao' and not self.comandos_nao:
-            return {"status": "erro", "mensagem": "Conecte-se ao NAO para usar esta saída de áudio."}
-        self.saida_audio = saida_lower
+        self.saida_audio = saida.lower()
         return {"status": "saída de áudio definida", "saida": self.saida_audio}
 
     def conectar_nao(self, ip: str, port: int = 9559):

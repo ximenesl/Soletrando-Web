@@ -32,7 +32,7 @@ interface ApiContextType {
   backspace: () => Promise<void>;
   setLevel: (level: string) => Promise<void>;
   setMicSource: (source: string) => Promise<void>;
-  setAudioOutput: (output: string) => Promise<void>;
+  setApiAudioOutput: (output: string) => Promise<void>;
 }
 
 const ApiContext = createContext<ApiContextType | undefined>(undefined);
@@ -116,7 +116,7 @@ export function ApiProvider({ children }: { children: ReactNode }) {
         backspace,
         setLevel,
         setMicSource,
-        setAudioOutput,
+        setApiAudioOutput: setAudioOutput,
       }}
     >
       {children}

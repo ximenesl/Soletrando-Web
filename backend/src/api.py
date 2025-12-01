@@ -2,15 +2,29 @@
 import asyncio
 import json
 import queue
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from game.gerenciador_jogo import GerenciadorJogo
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inicia a tarefa de processamento da fila em segundo plano
+    task = asyncio.create_task(process_queue())
+    print("Servidor iniciado, processador de fila no ar.")
+    yield
+    # Lógica de encerramento (se necessário)
+    task.cancel()
+    await task
+    print("Servidor encerrado.")
+
+
 app = FastAPI(
     title="Soletrando com NAO - API",
     description="API para gerenciar o jogo Soletrando, com integração ao robô NAO.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # --- Configuração do CORS ---
@@ -67,52 +81,67 @@ async def process_queue():
             soletracao = await asyncio.to_thread(game_manager.queue.get)
             await broadcast_state()
             game_manager.queue.task_done()
+        except asyncio.CancelledError:
+            print("Processador de fila cancelado.")
+            break
         except queue.Empty:
             await asyncio.sleep(0.1)
-
-@app.on_event("startup")
-async def startup_event():
-    # Inicia a tarefa de processamento da fila em segundo plano
-    asyncio.create_task(process_queue())
 
 
 # --- Endpoints da API ---
 
 @app.post("/game/start", tags=["Game"])
 async def start_game():
-    return game_manager.iniciar_jogo()
+    response = game_manager.iniciar_jogo()
+    await broadcast_state()
+    return response
 
 @app.post("/game/next-round", tags=["Game"])
 async def next_round():
-    return game_manager.iniciar_nova_rodada()
+    response = game_manager.iniciar_nova_rodada()
+    await broadcast_state()
+    return response
 
 @app.post("/game/spell", tags=["Game"])
 async def spell(device: str | int | None = None):
+    # A atualização aqui é feita pela queue no _adicionar_letra
     return game_manager.iniciar_soletracao(device)
 
 @app.post("/game/stop-spelling", tags=["Game"])
 async def stop_spelling():
-    return game_manager.parar_escuta_voz()
+    response = game_manager.parar_escuta_voz()
+    await broadcast_state()
+    return response
 
 @app.post("/game/check", tags=["Game"])
 async def check_spelling():
-    return game_manager.verificar_soletracao()
+    response = game_manager.verificar_soletracao()
+    await broadcast_state()
+    return response
 
 @app.post("/game/backspace", tags=["Game"])
 async def backspace():
-    return game_manager.apagar_ultima_letra()
+    response = game_manager.apagar_ultima_letra()
+    await broadcast_state()
+    return response
 
 @app.post("/game/level", tags=["Game"])
 async def set_level(level: str):
-    return game_manager.definir_nivel(level)
+    response = game_manager.definir_nivel(level)
+    await broadcast_state()
+    return response
 
 @app.post("/game/mic-source", tags=["Game"])
 async def set_mic_source(source: str):
-    return game_manager.definir_fonte_microfone(source)
+    response = game_manager.definir_fonte_microfone(source)
+    await broadcast_state()
+    return response
 
 @app.post("/game/audio-output", tags=["Game"])
 async def set_audio_output(output: str):
-    return game_manager.definir_saida_audio(output)
+    response = game_manager.definir_saida_audio(output)
+    await broadcast_state()
+    return response
 
 @app.get("/game/state", tags=["Game"])
 async def get_state():
@@ -122,13 +151,19 @@ async def get_state():
 
 @app.post("/nao/connect", tags=["NAO"])
 async def connect_nao(ip: str):
-    return game_manager.conectar_nao(ip)
+    response = game_manager.conectar_nao(ip)
+    await broadcast_state()
+    return response
 
 @app.post("/nao/disconnect", tags=["NAO"])
 async def disconnect_nao():
-    return game_manager.desconectar_nao()
+    response = game_manager.desconectar_nao()
+    await broadcast_state()
+    return response
 
 # --- Para executar a API localmente ---
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Para que o reload funcione, o uvicorn precisa ser chamado com uma string
+    # que aponta para a instância do app, em vez do objeto em si.
+    uvicorn.run("api:app", host="0.0.0.0", port=8001, reload=True)

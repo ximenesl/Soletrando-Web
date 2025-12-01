@@ -11,7 +11,10 @@ class GerenciadorPalavras:
 
     def carregar_palavras(self, nivel: str):
         """Carrega a lista de palavras para um nível específico."""
-        caminho_arquivo = os.path.join(CAMINHO_LISTAS_PALAVRAS, f"{nivel}.txt")
+        # Normaliza o nome do nível para corresponder ao nome do arquivo
+        # Ex: "1º Ano" -> "1_ano"
+        nome_arquivo = nivel.lower().replace('º ', '_')
+        caminho_arquivo = os.path.join(CAMINHO_LISTAS_PALAVRAS, f"{nome_arquivo}.txt")
         try:
             with open(caminho_arquivo, 'r', encoding='utf-8') as f:
                 self.palavras_do_nivel = [linha.strip().lower() for linha in f if linha.strip()]
